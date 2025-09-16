@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* File ini adalah titik masuk utama untuk Tailwind CSS. 
+  Baris di atas akan secara otomatis diganti oleh Vite 
+  dengan semua gaya CSS yang dibutuhkan oleh kelas-kelas 
+  Tailwind yang Anda gunakan di seluruh aplikasi.
+*/
+
+body {
+  background-color: #f1f5f9; /* Warna latar belakang abu-abu muda (slate-100) */
+  font-family: 'Inter', sans-serif; /* Menggunakan font Inter yang modern */
+}
+

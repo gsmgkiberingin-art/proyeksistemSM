@@ -1,38 +1,13 @@
-// File: src/router/index.js
+// File: src/router/index.js (Versi Final & Aman)
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 
 const routes = [
-  {
-    path: '/',
-    name: 'login',
-    component: () => import('@/views/LoginView.vue'),
-    meta: { requiresAuth: false }
-  },
-  {
-    path: '/dashboard',
-    name: 'dashboard',
-    component: () => import('@/views/DashboardView.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/kelola-guru',
-    name: 'kelola-guru',
-    component: () => import('@/views/KelolaGuruView.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/kelola-anak',
-    name: 'kelola-anak',
-    component: () => import('@/views/KelolaAnakView.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/absensi-anak',
-    name: 'absensi-anak',
-    component: () => import('@/views/AbsensiAnakView.vue'),
-    meta: { requiresAuth: true }
-  }
+  { path: '/', name: 'login', component: () => import('@/views/LoginView.vue'), meta: { requiresAuth: false } },
+  { path: '/dashboard', name: 'dashboard', component: () => import('@/views/DashboardView.vue'), meta: { requiresAuth: true } },
+  { path: '/kelola-guru', name: 'kelola-guru', component: () => import('@/views/KelolaGuruView.vue'), meta: { requiresAuth: true, requiredRole: 'admin' } },
+  { path: '/kelola-anak', name: 'kelola-anak', component: () => import('@/views/KelolaAnakView.vue'), meta: { requiresAuth: true, requiredRole: 'admin' } },
+  { path: '/absensi-anak', name: 'absensi-anak', component: () => import('@/views/AbsensiAnakView.vue'), meta: { requiresAuth: true, requiredRole: 'guru' } }
 ];
 
 const router = createRouter({
@@ -40,17 +15,45 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to, from, next) => {
-  const authStore = useAuthStore()
-  const isLoggedIn = !!authStore.user
+const waitForAuthInit = async () => {
+  const authStore = useAuthStore();
+  if (!authStore.isAuthReady) {
+    await authStore.monitorAuthState();
+  }
+};
+
+router.beforeEach(async (to, from, next) => {
+  const authStore = useAuthStore();
+  await waitForAuthInit(); // Selalu pastikan auth sudah siap
+  
+  const isLoggedIn = !!authStore.user;
+  const userRole = authStore.userInfo?.role;
 
   if (to.meta.requiresAuth && !isLoggedIn) {
-    next({ name: 'login' })
+    next({ name: 'login' });
   } else if (to.name === 'login' && isLoggedIn) {
-    next({ name: 'dashboard' })
-  } else {
-    next()
-  }
-})
+    next({ name: 'dashboard' });
+  } else if (to.meta.requiredRole) {
+    // Jika rute butuh peran spesifik, cek di sini
+    let hasAccess = false;
+    const requiredRole = to.meta.requiredRole;
 
-export default router
+    if (requiredRole === 'admin') {
+      hasAccess = userRole === 'admin';
+    } else if (requiredRole === 'guru') {
+      hasAccess = ['admin', 'wali_kelas', 'guru'].includes(userRole);
+    }
+    
+    if (hasAccess) {
+      next(); // Izinkan
+    } else {
+      alert('Anda tidak memiliki hak akses untuk halaman ini.');
+      next({ name: 'dashboard' }); // Tolak
+    }
+  } else {
+    // Untuk rute yang butuh login tapi tanpa peran spesifik (seperti dasbor)
+    next();
+  }
+});
+
+export default router;

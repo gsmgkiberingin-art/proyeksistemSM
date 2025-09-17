@@ -1,11 +1,8 @@
 <script setup>
 // File: src/views/KelolaGuruView.vue
-// Tujuan: Halaman untuk mengelola data master guru (CRUD) dengan detail lengkap.
-
-import { ref, onMounted, onUnmounted, computed } from 'vue';
-// PERBAIKAN: Mengubah path yang salah menjadi alias path yang benar.
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useGuruStore } from '@/stores/guruStore';
-import Navbar from '@/components/Navbar.vue';
+import Navbar from '@/components/Navbar.vue'; // <-- Impor dengan 'N' besar
 
 const guruStore = useGuruStore();
 
@@ -19,6 +16,7 @@ const jenisKelaminOptions = ['Laki-laki', 'Perempuan'];
 const formTeacher = ref({
   nomorInduk: '',
   nama: '',
+  email: '', 
   alamat: '',
   tanggalLahir: '',
   jenisKelamin: '',
@@ -30,23 +28,14 @@ const formTeacher = ref({
 });
 const fotoFile = ref(null);
 const fotoPreview = ref(null);
-
 const otherGereja = ref('');
 const isOtherKelasChecked = ref(false);
 const otherKelas = ref('');
-
 const isEditing = ref(false);
 const editingTeacherId = ref(null);
 
-onMounted(() => {
-  guruStore.fetchTeachers();
-});
-
-onUnmounted(() => {
-  if (guruStore.unsubscribe) {
-    guruStore.unsubscribe();
-  }
-});
+onMounted(() => { guruStore.fetchTeachers(); });
+onUnmounted(() => { if (guruStore.unsubscribe) { guruStore.unsubscribe(); } });
 
 const handleFileChange = (event) => {
   const file = event.target.files[0];
@@ -57,27 +46,17 @@ const handleFileChange = (event) => {
 };
 
 const handleSubmit = async () => {
-  if (formTeacher.value.nama.trim() === '' || formTeacher.value.peran.length === 0) {
-    alert('Nama dan minimal satu Peran harus diisi.');
+  if (formTeacher.value.nama.trim() === '' || formTeacher.value.peran.length === 0 || formTeacher.value.email.trim() === '') {
+    alert('Nama, Email, dan minimal satu Peran harus diisi.');
     return;
   }
   
   const dataToSubmit = JSON.parse(JSON.stringify(formTeacher.value));
-
-  if (dataToSubmit.anggotaGereja === 'Pilihan Lain') {
-    if (otherGereja.value.trim() === '') {
-      alert('Harap isi nama jemaat lainnya.');
-      return;
-    }
+  if (dataToSubmit.anggotaGereja === 'Pilihan Lain' && otherGereja.value.trim()) {
     dataToSubmit.anggotaGereja = otherGereja.value.trim();
   }
-
-  if (isOtherKelasChecked.value) {
-     if (otherKelas.value.trim() === '') {
-      alert('Harap isi nama kelas lainnya.');
-      return;
-    }
-    dataToSubmit.mengajarDiKelas.push(otherKelas.value.trim());
+  if (isOtherKelasChecked.value && otherKelas.value.trim()) {
+     dataToSubmit.mengajarDiKelas.push(otherKelas.value.trim());
   }
 
   const { nomorInduk, ...teacherData } = dataToSubmit;
@@ -101,51 +80,31 @@ const handleEdit = (teacher) => {
     formTeacher.value.anggotaGereja = 'Pilihan Lain';
     otherGereja.value = teacher.anggotaGereja || '';
   }
-
   const standardClasses = [];
   let customClass = '';
   (teacher.mengajarDiKelas || []).forEach(kelas => {
-    if (kelasOptions.includes(kelas)) {
-      standardClasses.push(kelas);
-    } else {
-      customClass = kelas;
-    }
+    if (kelasOptions.includes(kelas)) standardClasses.push(kelas);
+    else customClass = kelas;
   });
   formTeacher.value.mengajarDiKelas = standardClasses;
   otherKelas.value = customClass;
   isOtherKelasChecked.value = !!customClass;
 
-  formTeacher.value.nomorInduk = teacher.nomorInduk || '';
-  formTeacher.value.nama = teacher.nama || '';
-  formTeacher.value.alamat = teacher.alamat || '';
-  formTeacher.value.tanggalLahir = teacher.tanggalLahir || '';
-  formTeacher.value.jenisKelamin = teacher.jenisKelamin || '';
-  formTeacher.value.noHp = teacher.noHp || '';
-  formTeacher.value.peran = teacher.peran || [];
-  formTeacher.value.fotoUrl = teacher.fotoUrl || '';
+  formTeacher.value = { ...formTeacher.value, ...teacher };
   
   fotoPreview.value = teacher.fotoUrl || null;
   window.scrollTo(0, 0);
 };
 
-const cancelEdit = () => {
-  resetForm();
-};
+const cancelEdit = () => { resetForm(); };
 
 const resetForm = () => {
   isEditing.value = false;
   editingTeacherId.value = null;
   formTeacher.value = { 
-    nomorInduk: '', 
-    nama: '', 
-    alamat: '', 
-    tanggalLahir: '', 
-    jenisKelamin: '',
-    noHp: '', 
-    anggotaGereja: '', 
-    peran: [], 
-    mengajarDiKelas: [], 
-    fotoUrl: '' 
+    nomorInduk: '', nama: '', email: '', alamat: '', tanggalLahir: '', 
+    jenisKelamin: '', noHp: '', anggotaGereja: '', peran: [], 
+    mengajarDiKelas: [], fotoUrl: '' 
   };
   fotoFile.value = null;
   fotoPreview.value = null;
@@ -183,6 +142,9 @@ const handleDeleteTeacher = (id) => {
               <label class="block text-sm font-medium text-gray-600 mb-1">Nama Lengkap</label>
               <input v-model="formTeacher.nama" type="text" required class="w-full p-3 border border-gray-300 rounded-lg"/>
               
+              <label class="block text-sm font-medium text-gray-600 mb-1 mt-4">Email (untuk Login)</label>
+              <input v-model="formTeacher.email" type="email" required placeholder="Gunakan email Google" class="w-full p-3 border border-gray-300 rounded-lg"/>
+              
               <label class="block text-sm font-medium text-gray-600 mb-1 mt-4">Alamat</label>
               <textarea v-model="formTeacher.alamat" rows="2" class="w-full p-3 border border-gray-300 rounded-lg"></textarea>
               
@@ -199,18 +161,18 @@ const handleDeleteTeacher = (id) => {
 
               <label class="block text-sm font-medium text-gray-600 mb-1 mt-4">No. WA</label>
               <input v-model="formTeacher.noHp" type="tel" placeholder="cth: 08123456789" class="w-full p-3 border border-gray-300 rounded-lg"/>
+            </div>
 
-              <label class="block text-sm font-medium text-gray-600 mb-1 mt-4">Anggota Jemaat</label>
+            <!-- Kolom Kanan -->
+            <div>
+              <label class="block text-sm font-medium text-gray-600 mb-1">Anggota Jemaat</label>
               <select v-model="formTeacher.anggotaGereja" class="w-full p-3 border border-gray-300 rounded-lg bg-white">
                 <option disabled value="">Pilih jemaat...</option>
                 <option v-for="gereja in anggotaGerejaOptions" :key="gereja" :value="gereja">{{ gereja }}</option>
               </select>
               <input v-if="formTeacher.anggotaGereja === 'Pilihan Lain'" v-model="otherGereja" type="text" placeholder="Ketik nama jemaat lain" class="w-full p-3 mt-2 border border-gray-300 rounded-lg"/>
-            </div>
 
-            <!-- Kolom Kanan -->
-            <div>
-              <label class="block text-sm font-medium text-gray-600 mb-1">Peran (Bisa pilih lebih dari satu)</label>
+              <label class="block text-sm font-medium text-gray-600 mb-1 mt-4">Peran</label>
               <div class="p-3 border border-gray-300 rounded-lg bg-white grid grid-cols-2 gap-2">
                 <div v-for="role in peranOptions" :key="role">
                   <label class="flex items-center space-x-2">
@@ -220,7 +182,7 @@ const handleDeleteTeacher = (id) => {
                 </div>
               </div>
 
-              <label class="block text-sm font-medium text-gray-600 mb-1 mt-4">Mengajar di Kelas (Bisa pilih lebih dari satu)</label>
+              <label class="block text-sm font-medium text-gray-600 mb-1 mt-4">Mengajar di Kelas</label>
               <div class="p-3 border border-gray-300 rounded-lg bg-white grid grid-cols-2 gap-2">
                 <div v-for="kelas in kelasOptions" :key="kelas">
                   <label class="flex items-center space-x-2">
@@ -239,7 +201,6 @@ const handleDeleteTeacher = (id) => {
 
               <label class="block text-sm font-medium text-gray-600 mb-1 mt-4">Upload Foto</label>
               <input id="fotoInput" @change="handleFileChange" type="file" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"/>
-              <p class="text-xs text-gray-500 mt-1">Di HP, ini akan memberikan pilihan untuk membuka kamera atau galeri.</p>
               <img v-if="fotoPreview" :src="fotoPreview" alt="Preview Foto" class="mt-4 w-32 h-32 rounded-lg object-cover shadow-md"/>
             </div>
 
@@ -254,7 +215,8 @@ const handleDeleteTeacher = (id) => {
           </form>
         </div>
 
-        <!-- Daftar Guru -->
+        <!-- Tabel Daftar Guru -->
+        <h2 class="text-2xl font-bold text-gray-800 mb-4 pt-4 border-t">Daftar Guru Terdaftar</h2>
         <div class="overflow-x-auto">
           <table class="min-w-full bg-white border border-gray-200 rounded-lg">
             <thead class="bg-gray-50">
@@ -262,15 +224,13 @@ const handleDeleteTeacher = (id) => {
                 <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase">Foto</th>
                 <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase">Nomor Induk</th>
                 <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase">Nama & Jemaat</th>
-                <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase">Jenis Kelamin</th>
                 <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase">Peran</th>
-                <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase">Kelas Ajar</th>
                 <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase">No. WA</th>
                 <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
-              <tr v-if="guruStore.loading"><td colspan="8" class="text-center p-4">Memuat data guru...</td></tr>
+              <tr v-if="guruStore.loading"><td colspan="6" class="text-center p-4">Memuat data guru...</td></tr>
               <tr v-else v-for="guru in guruStore.teachers" :key="guru.id" class="hover:bg-gray-50">
                 <td class="py-2 px-4">
                   <img :src="guru.fotoUrl || 'https://placehold.co/60x60/E2E8F0/A0AEC0?text=Foto'" alt="Foto Guru" class="w-12 h-12 rounded-full object-cover"/>
@@ -282,15 +242,9 @@ const handleDeleteTeacher = (id) => {
                   <div class="font-medium text-gray-800">{{ guru.nama }}</div>
                   <div class="text-sm text-gray-500">{{ guru.anggotaGereja }}</div>
                 </td>
-                <td class="py-2 px-4 whitespace-nowrap">{{ guru.jenisKelamin || '-' }}</td>
                 <td class="py-2 px-4 text-sm text-gray-600">
                   <div class="flex flex-col">
                     <span v-for="peran in guru.peran" :key="peran" class="bg-blue-100 text-blue-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full mb-1">{{ peran }}</span>
-                  </div>
-                </td>
-                <td class="py-2 px-4 text-sm text-gray-600">
-                   <div class="flex flex-col">
-                    <span v-for="kelas in guru.mengajarDiKelas" :key="kelas" class="bg-green-100 text-green-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full mb-1">{{ kelas }}</span>
                   </div>
                 </td>
                 <td class="py-2 px-4 whitespace-nowrap">{{ guru.noHp || '-' }}</td>
